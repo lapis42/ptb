@@ -39,8 +39,8 @@ void setup() {
 
 void loop() {
     checkSerial();
-    checkSensor();
     if (enableLaser) {
+        checkSensor();
         checkLaser();
     }
 }
