@@ -1,8 +1,8 @@
 #define outPin        0
 #define inPin         1
 #define inGround      2
-#define laserPin      13
-#define laserGround   14
+#define statePin     13
+#define laserPin      14
 
 #define LASEROFF      0
 #define LASERSTANDBY  1
@@ -23,7 +23,7 @@ void setup() {
 
     pinMode(outPin, OUTPUT);
     pinMode(laserPin, OUTPUT);
-    pinMode(laserGround, OUTPUT);
+    pinMode(statePin, OUTPUT);
     
     pinMode(inPin, INPUT_PULLUP);
     pinMode(inGround, OUTPUT);
@@ -31,7 +31,7 @@ void setup() {
 
     digitalWriteFast(outPin, LOW);
     digitalWriteFast(laserPin, LOW);
-    digitalWriteFast(laserGround, LOW);
+    digitalWriteFast(statePin, LOW);
     digitalWriteFast(inGround, LOW);
     inputState = digitalReadFast(inPin);
 }
@@ -62,9 +62,11 @@ void checkSerial() { // takes 11.7 ns (7 clocks) if no message
             Serial.println(latency);
         }
         else if (cCOM == 'e') {
+            digitalWriteFast(statePin, HIGH);
             enableLaser = true;
         }
         else if (cCOM == 'd') {
+            digitalWriteFast(statePin, LOW);
             enableLaser = false;
         }
     }
