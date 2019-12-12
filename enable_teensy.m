@@ -4,7 +4,7 @@ if (nargin < 1) | (isempty(state))
 end
 
 pkg load instrument-control
-ser = serial('/dev/ttyACM0')
+ser = serial('/dev/ttyACM0');
 
 if state == 1
     srl_write(ser, 'e');
