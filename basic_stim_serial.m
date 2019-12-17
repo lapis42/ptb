@@ -19,6 +19,8 @@ clear;
 
 
 %% Experimental parameters
+SAVEFOLDER = '/mnt/data/ptb/';
+
 paramsField = {'animalName', ...
                 'time', ...
                 'nDirection', ...
@@ -159,10 +161,8 @@ while inExperiment
 
 
     % Save setup data
-    SAVEFOLDER = '/opt/localuser/Work/ptb/data/';
     fileName = [params.animalName, '_', strftime('%Y%m%d_%H%M%S', localtime(time())), '.mat'];
     fullFileName = fullfile(SAVEFOLDER, fileName);
-    save('-mat7-binary', fullFileName, 'directions', 'itiFrame', 'params');
     
 
     % Initial iti
@@ -220,6 +220,7 @@ while inExperiment
         end
     end
 
+    save('-mat7-binary', fullFileName, 'directions', 'itiFrame', 'params');
     Screen('FillRect', window, black, squareRect);
     DrawFormattedText(window, 'Press F12 to start, and SCROLLLOCK to exit', 'center', params.screenYpixels * 0.975, [0.25, 0.25, 0.25]);
     Screen('Flip', window);
