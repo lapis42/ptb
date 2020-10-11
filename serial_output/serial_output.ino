@@ -1,8 +1,8 @@
-#define outPin        0
-#define inPin         1
-#define inGround      2
-#define statePin     13
-#define laserPin      14
+#define outPin        0 // output that notifies that the visual stimuli is on
+#define inPin         1 // input from FPGA bmi
+#define inGround      2 // ground for inPin
+#define statePin     13 // to show whether the teensy is enabled
+#define laserPin      14 // output to laser
 
 #define LASEROFF      0
 #define LASERSTANDBY  1
@@ -14,7 +14,7 @@ int inputState;
 int laserState = LASEROFF;
 unsigned long inputTime;
 unsigned long latency = 0;
-const unsigned long laserDuration = 1000; // 1 ms
+const unsigned long laserDuration = 10000; // 10 ms
 
 
 
@@ -50,7 +50,7 @@ void checkSerial() { // takes 11.7 ns (7 clocks) if no message
     if (Serial.available() > 0) {
         cCOM = Serial.read();
 
-        if (cCOM == '1') {
+        if (cCOM == '1') { // visual cue
             digitalWriteFast(outPin, HIGH);
         }
         else if (cCOM == '0') {
@@ -61,11 +61,11 @@ void checkSerial() { // takes 11.7 ns (7 clocks) if no message
             latency = Serial.read() * 1000;
             Serial.println(latency);
         }
-        else if (cCOM == 'e') {
+        else if (cCOM == 'e') { // enable
             digitalWriteFast(statePin, HIGH);
             enableLaser = true;
         }
-        else if (cCOM == 'd') {
+        else if (cCOM == 'd') { // disable
             digitalWriteFast(statePin, LOW);
             enableLaser = false;
         }
@@ -74,9 +74,9 @@ void checkSerial() { // takes 11.7 ns (7 clocks) if no message
 
 
 void checkSensor() {
-    if (digitalReadFast(inPin) != inputState) {
-        if (inputState == 0) {
-            inputTime = micros();
+    if (digitalReadFast(inPin) != inputState) { // if the signal is changed
+        if (inputState == 0) { // if it is rising-edge
+            inputTime = micros(); // input time will be updated even when the laser if on
             inputState = 1;
             if (laserState == LASEROFF) laserState = LASERSTANDBY;
         }
