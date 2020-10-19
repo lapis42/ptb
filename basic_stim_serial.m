@@ -40,8 +40,8 @@ paramsDefault = {'ptb', ... % animal name
                   4, ... % n block
                   5, ... % n trial per block
                   0.5, ... % stimulus duration in second
-                  0.3, ... % iti start in second
-                  1, ... % iti mean in second
+                  0.5, ... % iti start in second
+                  1.5, ... % iti mean in second
                   3, ... % iti end in second
                   90, ... % view angle
                   0.05, ... % spatial frequency
@@ -107,6 +107,9 @@ fullDiag = halfDiag * 2 + 1;
 params.ifi = Screen('GetFlipInterval', window); % inter-flip interval
 params.frameRate = 1 / params.ifi;
 params.stimulusFrame = round(params.stimulusDuration * params.frameRate);
+durationTotal = params.nTrial * (params.stimulusDuration + params.itiMean);
+fprintf('\nDuration: %d\n', durationTotal / 60);
+
 
 % Open shader (I don't know what it means...)
 AssertGLSL;

@@ -14,7 +14,7 @@ int inputState;
 int laserState = LASEROFF;
 unsigned long inputTime;
 unsigned long latency = 0;
-const unsigned long laserDuration = 10000; // 10 ms
+const unsigned long laserDuration = 20000; // 10 ms
 
 
 
