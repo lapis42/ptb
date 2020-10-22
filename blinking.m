@@ -23,39 +23,48 @@ SAVEFOLDER = '/mnt/data/ptb/';
 
 paramsField = {'animalName', ...
                'time', ...
-               'nTrial', ...
+               'nBlock', ...
+               'nTrialTest', ...
+               'nTrialControl', ...
                'stimulusDuration', ...
                'itiStart', ...
                'itiMean', ...
                'itiEnd', ...
-               'laserLatency'};
+               'laserLatency', ...
+               'laserDuration', ...
+               'laserEnable'};
 paramsDefault = {'ptb', ... % animal name
                   strftime('%Y%m%d_%H%M%S', localtime(time())), ... % time
-                  120, ... % n trial per block
+                  10, ... % n block
+                  10, ... % n trial test per block
+                  5, ... % n trial control per block
                   0.5, ... % stimulus duration in second
                   0.5, ... % iti start in second
                   1.5, ... % iti mean in second
                   3, ... % iti end in second
-                  0}; % laser latency in ms
+                  0, ... % laser latency in ms
+                  20, ... % laser duration in ms
+                  1}; % laser enable
                  
                  
 paramsValue = inputdlg(paramsField, '', 1, paramsDefault);
-
 if isempty(paramsValue); return; end
 
 for iParams = 3:length(paramsValue)
     paramsValue{iParams} = str2double(paramsValue{iParams});
 end
 params = cell2struct(paramsValue, paramsField);
+params.nTrial = params.nBlock * (params.nTrialTest + params.nTrialControl);
 
 
 
 %% Serial commnunication
 pkg load instrument-control
 ser = serial('/dev/ttyACM0');
-srl_write(ser, '0');
+srl_write(ser, '0d');
 pause(0.05);
-srl_write(ser, ['l', params.laserLatency]);
+srl_write(ser, ['l', params.laserLatency]); % set laser latency from FPGA output
+srl_write(ser, ['D', params.laserDuration]); % set laser duration
 
 
 
@@ -88,12 +97,9 @@ Priority(topPriorityLevel);
 
 % Get window information 
 [params.screenXpixels, params.screenYpixels] = Screen('WindowSize', window);
-
 params.ifi = Screen('GetFlipInterval', window); % inter-flip interval
 params.frameRate = 1 / params.ifi;
 params.stimulusFrame = round(params.stimulusDuration * params.frameRate);
-durationTotal = params.nTrial * (params.stimulusDuration + params.itiMean);
-fprintf('\nDuration: %d\n', durationTotal / 60);
 
 
 % Open shader (I don't know what it means...)
@@ -111,6 +117,11 @@ escapeKey = KbName('SCROLLLOCK');
 %% Make stimuli
 % Square
 squareRect = [0, 0, params.screenXpixels, params.screenYpixels];
+if params.laserEnable
+    enableBase = [true(params.nTrialTest, 1); false(params.nTrialControl, 1)];
+else
+    enableBase = false(params.nTrialTest + params.nTrialControl, 1);
+end
 
 
 %% Plot
@@ -122,6 +133,12 @@ Screen('Flip', window);
 inExperiment = checkWaitKey(startKey, escapeKey);
 
 while inExperiment
+    % Generate trial structure
+    enable = [];
+    for iBlock = 1:params.nBlock
+        idx = randperm(params.nTrialTest + params.nTrialControl);
+        enable = [enable; enableBase(idx)];
+    end
     iti = exprnd(params.itiMean - params.itiStart, params.nTrial, 1) + params.itiStart;
     iti(iti > params.itiEnd) = params.itiEnd;
     itiFrame = round(iti / params.ifi);    
@@ -134,22 +151,46 @@ while inExperiment
 
     % Initial iti
     Screen('FillRect', window, black, squareRect);
-    srl_write(ser, '0');
+    srl_write(ser, '0d');
     vbl = Screen('Flip', window);
 
 
     % Start trial
-    vbl = Screen('Flip', window, vbl + 2);
+    vbl = Screen('Flip', window, vbl + 1);
     for iTrial = 1:params.nTrial
+        % Inter-trial interval
+        for iFrame = 1:itiFrame(iTrial)
+            Screen('FillRect', window, black, squareRect);
+
+            if checkKey(escapeKey)
+                srl_write(ser, '0d');
+                enable = enable(1:(iTrial-1));
+                itiFrame = itiFrame(1:(iTrial-1));
+                save('-mat7-binary', fullFileName, 'enable', 'itiFrame', 'params');
+                finishTask();
+                return
+            end
+
+            if iFrame == 3
+                if enable(iTrial)
+                    srl_write(ser, '0e');
+                else
+                    srl_write(ser, '0d');
+                end
+            end
+           
+            vbl = Screen('Flip', window, vbl + 0.5 * params.ifi);
+        end
+
         % Trial
         for iFrame = 1:params.stimulusFrame
             Screen('FillRect', window, white, squareRect);
 
             if checkKey(escapeKey)
-                srl_write(ser, '0');
-                directions = directions(1:(iTrial-1));
+                srl_write(ser, '0d');
+                enable = enable(1:(iTrial-1));
                 itiFrame = itiFrame(1:(iTrial-1));
-                save('-mat7-binary', fullFileName, 'directions', 'itiFrame', 'params');
+                save('-mat7-binary', fullFileName, 'enable', 'itiFrame', 'params');
                 finishTask();
                 return
             end
@@ -161,34 +202,23 @@ while inExperiment
             vbl = Screen('Flip', window, vbl + 0.5 * params.ifi);
         end
 
-        % Inter-trial interval
-        for iFrame = 1:itiFrame(iTrial)
-            Screen('FillRect', window, black, squareRect);
-
-            if checkKey(escapeKey)
-                srl_write(ser, '0');
-                directions = directions(1:(iTrial-1));
-                itiFrame = itiFrame(1:(iTrial-1));
-                save('-mat7-binary', fullFileName, 'directions', 'itiFrame', 'params');
-                finishTask();
-                return
-            end
-
-            if iFrame == 3
-                srl_write(ser, '0');
-            end
-           
-            vbl = Screen('Flip', window, vbl + 0.5 * params.ifi);
-        end
     end
 
-    save('-mat7-binary', fullFileName, 'directions', 'itiFrame', 'params');
+    % Last iti
+    Screen('FillRect', window, black, squareRect);
+    srl_write(ser, '0d');
+    vbl = Screen('Flip', window, vbl + 1);
+
+
+
+    save('-mat7-binary', fullFileName, 'enable', 'itiFrame', 'params');
     Screen('FillRect', window, black, squareRect);
     DrawFormattedText(window, 'Press F12 to start, and SCROLLLOCK to exit', 'center', params.screenYpixels * 0.975, [0.25, 0.25, 0.25]);
     Screen('Flip', window);
     inExperiment = checkWaitKey(startKey, escapeKey);
 end
-srl_write(ser, '0');
+
+srl_write(ser, '0d');
 finishTask();
 fclose(ser);
 
@@ -223,7 +253,4 @@ function finishTask()
 % Clear the screen
 Priority(0);
 sca;
-
-
-
 

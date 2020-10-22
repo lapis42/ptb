@@ -14,7 +14,7 @@ int inputState;
 int laserState = LASEROFF;
 unsigned long inputTime;
 unsigned long latency = 0;
-const unsigned long laserDuration = 20000; // 10 ms
+unsigned long laserDuration = 20000;
 
 
 
@@ -61,12 +61,19 @@ void checkSerial() { // takes 11.7 ns (7 clocks) if no message
             latency = Serial.read() * 1000;
             Serial.println(latency);
         }
+        else if (cCOM == 'D') { // duration
+            while (Serial.available() == 0) {}
+            laserDuration = Serial.read() * 1000;
+            Serial.println(laserDuration);
+        }
         else if (cCOM == 'e') { // enable
             digitalWriteFast(statePin, HIGH);
             enableLaser = true;
         }
         else if (cCOM == 'd') { // disable
             digitalWriteFast(statePin, LOW);
+            digitalWriteFast(laserPin, LOW);
+            laserState = LASEROFF;
             enableLaser = false;
         }
     }
