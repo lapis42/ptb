@@ -1,7 +1,8 @@
 #define outPin        0 // output that notifies that the visual stimuli is on
 #define inPin         1 // input from FPGA bmi
 #define inGround      2 // ground for inPin
-#define statePin     13 // to show whether the teensy is enabled
+#define stateGround   12 // ground for statePin
+#define statePin      13 // to show whether the teensy is enabled
 #define laserPin      14 // output to laser
 
 #define LASEROFF      0
@@ -27,12 +28,14 @@ void setup() {
     
     pinMode(inPin, INPUT_PULLUP);
     pinMode(inGround, OUTPUT);
+    pinMode(stateGround, OUTPUT);
     
 
     digitalWriteFast(outPin, LOW);
     digitalWriteFast(laserPin, LOW);
     digitalWriteFast(statePin, LOW);
     digitalWriteFast(inGround, LOW);
+    digitalWriteFast(stateGround, LOW);
     inputState = digitalReadFast(inPin);
 }
 
